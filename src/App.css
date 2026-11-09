@@ -128,3 +128,19 @@ input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: none; b
 .genre { height: 100px; border-radius: 8px; padding: 16px; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; cursor: pointer; overflow: hidden; position: relative; transition: filter .2s; }
 .genre:hover { filter: brightness(1.15); }
 .error { color: #f15e6c; margin-top: 16px; }
+
+.main { position: relative; }
+.topbar { position: sticky; top: 0; z-index: 5; display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding: 12px 24px; margin-bottom: -60px; pointer-events: none; }
+.topbar > * { pointer-events: auto; }
+.pill { background: #fff; color: #000; font-weight: 700; font-size: 14px; padding: 10px 24px; border-radius: 500px; transition: transform .15s; }
+.pill:hover { transform: scale(1.04); }
+.pill.ghost { background: rgba(0,0,0,.6); color: #fff; border: 1px solid #727272; padding: 6px 16px; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+.user { font-weight: 700; font-size: 14px; background: rgba(0,0,0,.6); padding: 6px 12px; border-radius: 500px; }
+.banner { margin: 16px 24px 0; padding: 12px 16px; background: rgba(241,94,108,.12); border-radius: 6px; cursor: pointer; position: relative; z-index: 6; }
+.banner small { display: inline; color: #f15e6c; opacity: .7; }
+.link { cursor: pointer; }
+.link:hover { color: #fff; text-decoration: underline; }
+img.round { border-radius: 50% !important; }
+h2.tight { margin-top: 0; }
+.device { font-size: 12px; color: #1ed760; margin-right: 8px; white-space: nowrap; }

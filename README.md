@@ -11,6 +11,19 @@ npm install
 npm run dev
 ```
 
+## Catalogo Spotify ufficiale (serve Spotify Premium)
+
+1. Su https://developer.spotify.com/dashboard crea un'app con **Web API** e **Web Playback SDK**.
+2. Aggiungi i Redirect URI:
+   - `https://leonardosanketh2004-blip.github.io/-Spotify-Clone/`
+   - `http://127.0.0.1:5173/`
+3. Copia il **Client ID** (il Client Secret non serve: il login usa OAuth PKCE).
+4. In locale aggiungi a `.env.local`: `VITE_SPOTIFY_CLIENT_ID=il_tuo_client_id` e apri http://127.0.0.1:5173/.
+5. Per il sito online aggiungi il secret GitHub Actions `SPOTIFY_CLIENT_ID`.
+
+In modalità sviluppo Spotify consente l'accesso solo agli utenti aggiunti in **User Management** nella dashboard.
+Senza login Spotify l'app usa Jamendo.
+
 ## Musica vera con Jamendo
 
 1. Crea un'app gratuita su https://devportal.jamendo.com e copia il **Client ID**.

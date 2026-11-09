@@ -27,6 +27,7 @@ jobs:
       - run: npm run build
         env:
           VITE_JAMENDO_CLIENT_ID: ${{ secrets.JAMENDO_CLIENT_ID }}
+          VITE_SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
           BASE_PATH: /${{ github.event.repository.name }}/
       - uses: actions/upload-pages-artifact@v3
         with:
