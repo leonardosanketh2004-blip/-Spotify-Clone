@@ -308,7 +308,7 @@ export default function App() {
             <input type="range" min={0} max={duration || 0} step={0.1} value={time}
               style={{ '--p': `${duration ? (time / duration) * 100 : 0}%` }}
               onChange={(e) => { audio.current.currentTime = +e.target.value; setTime(+e.target.value); }} />
-            <small>{fmt(duration)}</small>
+            <small>{fmt(duration || current?.duration)}</small>
           </div>
         </div>
         <div className="volume">
@@ -319,6 +319,7 @@ export default function App() {
         </div>
         <audio ref={audio} src={current?.src} preload="metadata"
           onTimeUpdate={(e) => setTime(e.target.currentTime)}
+          onLoadStart={() => setDuration(0)}
           onLoadedMetadata={(e) => setDuration(e.target.duration)}
           onEnded={() => next(true)}
           onPlaying={() => { failures.current = 0; }}
