@@ -21,3 +21,9 @@ npm run dev
 3. Riavvia `npm run dev`.
 
 Senza Client ID l'app usa i brani demo.
+
+## Pubblicazione (GitHub Pages)
+
+Ogni push su `main` pubblica l'app tramite `.github/workflows/deploy.yml`. Richiede:
+- Settings → Pages → Source: **GitHub Actions**
+- Settings → Secrets and variables → Actions → secret `JAMENDO_CLIENT_ID`
