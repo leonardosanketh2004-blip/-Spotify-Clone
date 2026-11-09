@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { tracks, defaultPlaylists, albums } from './data';
+import { jamendoEnabled, genres, popularTracks, popularAlbums, searchTracks, tagTracks, albumTracks } from './jamendo';
 import * as Ic from './Icons';
 import './App.css';
 
-const byId = Object.fromEntries(tracks.map((t) => [t.id, t]));
+const demoById = Object.fromEntries(tracks.map((t) => [t.id, t]));
 const fmt = (s) => (isFinite(s) ? `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}` : '0:00');
 
 function useStored(key, initial) {
@@ -30,8 +31,61 @@ export default function App() {
   const [repeat, setRepeat] = useState('off');
   const [query, setQuery] = useState('');
   const [menu, setMenu] = useState(null);
+  const [known, setKnown] = useStored('sc-tracks', {});
+  const [popular, setPopular] = useState(jamendoEnabled ? [] : tracks.map((t) => t.id));
+  const [homeAlbums, setHomeAlbums] = useState(jamendoEnabled ? [] : albums);
+  const [results, setResults] = useState(jamendoEnabled ? [] : tracks.map((t) => t.id));
+  const [remote, setRemote] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
+  const byId = useMemo(() => ({ ...demoById, ...known }), [known]);
   const current = byId[queue[index]];
+
+  const remember = (list) => {
+    setKnown((k) => ({ ...k, ...Object.fromEntries(list.map((t) => [t.id, t])) }));
+    return list.map((t) => t.id);
+  };
+
+  useEffect(() => {
+    if (!jamendoEnabled) return;
+    popularTracks().then((list) => {
+      const ids = remember(list);
+      setPopular(ids);
+      setQueue((q) => (q.every((id) => demoById[id]) ? ids : q));
+    }).catch((e) => setError(e.message));
+    popularAlbums().then(setHomeAlbums).catch((e) => setError(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!jamendoEnabled) {
+      setResults(tracks.filter((t) => `${t.title} ${t.artist} ${t.album}`.toLowerCase().includes(query.toLowerCase())).map((t) => t.id));
+      return;
+    }
+    if (!query.trim()) { setResults(popular); return; }
+    setLoading(true);
+    const timer = setTimeout(() => {
+      searchTracks(query.trim()).then((list) => setResults(remember(list))).catch((e) => setError(e.message)).finally(() => setLoading(false));
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, popular]);
+
+  useEffect(() => {
+    if (!(view.type === 'tag' || (view.type === 'album' && jamendoEnabled))) { setRemote(null); return; }
+    const genre = genres.find((g) => g.tag === view.tag);
+    const base = view.type === 'tag'
+      ? { id: `tag-${view.tag}`, name: genre?.name ?? view.tag, description: `I brani ${genre?.name ?? view.tag} più ascoltati del mese`, color: genre?.color }
+      : { id: `album-${view.id}`, name: view.name, description: view.description, cover: view.cover, album: true };
+    setRemote({ ...base, trackIds: [], loading: true });
+    const load = view.type === 'tag' ? tagTracks(view.tag) : albumTracks(view.id);
+    let cancelled = false;
+    load.then((list) => { if (!cancelled) setRemote({ ...base, trackIds: remember(list) }); })
+      .catch((e) => { if (!cancelled) { setError(e.message); setRemote({ ...base, trackIds: [] }); } });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
 
   useEffect(() => { audio.current.volume = muted ? 0 : volume; }, [volume, muted]);
   useEffect(() => {
@@ -79,12 +133,10 @@ export default function App() {
 
   const collection = useMemo(() => {
     if (view.type === 'playlist') return playlists.find((p) => p.id === view.id);
-    if (view.type === 'album') return albums.find((a) => a.id === view.id);
+    if (view.type === 'album' && !jamendoEnabled) return albums.find((a) => a.id === view.id);
     if (view.type === 'liked') return { id: 'liked', name: 'Brani che ti piacciono', description: `${liked.length} brani`, trackIds: liked, liked: true };
-    return null;
-  }, [view, playlists, liked]);
-
-  const results = tracks.filter((t) => `${t.title} ${t.artist} ${t.album}`.toLowerCase().includes(query.toLowerCase()));
+    return remote;
+  }, [view, playlists, liked, remote]);
 
   const trackTable = (ids, playlistId) => (
     <div className="tracks">
@@ -108,19 +160,19 @@ export default function App() {
               <button className="icon" title="Aggiungi a playlist" onClick={(e) => { e.stopPropagation(); setMenu({ tid: id, x: e.clientX, y: e.clientY }); }}><Ic.Plus /></button>
               {playlistId && <button className="icon" title="Rimuovi" onClick={() => removeFromPlaylist(playlistId, id)}><Ic.Trash /></button>}
             </span>
-            <span className="muted">{active ? fmt(duration) : '—'}</span>
+            <span className="muted">{t.duration ? fmt(t.duration) : active ? fmt(duration) : '—'}</span>
           </div>
         );
       })}
-      {!ids.length && <p className="muted empty">Nessun brano qui. Usa ＋ accanto a un brano per aggiungerlo.</p>}
+      {!ids.length && <p className="muted empty">{loading || collection?.loading ? 'Caricamento…' : 'Nessun brano qui. Usa ＋ accanto a un brano per aggiungerlo.'}</p>}
     </div>
   );
 
-  const card = (item, onOpen) => (
+  const card = (item, onOpen, onPlay) => (
     <div key={item.id} className="card" onClick={onOpen}>
       <div className="card-img">
         <img src={item.cover} alt="" />
-        <button className="fab" onClick={(e) => { e.stopPropagation(); playList(item.trackIds); }}><Ic.Play size={22} /></button>
+        <button className="fab" onClick={(e) => { e.stopPropagation(); onPlay ? onPlay() : playList(item.trackIds); }}><Ic.Play size={22} /></button>
       </div>
       <b>{item.name}</b>
       <small>{item.description}</small>
@@ -170,27 +222,48 @@ export default function App() {
                 </div>
               ))}
             </div>
-            <h2>Playlist per te</h2>
-            <div className="grid">{playlists.map((p) => card(p, () => setView({ type: 'playlist', id: p.id })))}</div>
+            {error && <p className="error">⚠ {error}</p>}
+            <h2>{jamendoEnabled ? 'Di tendenza questa settimana' : 'Brani demo'}</h2>
+            <div className="grid">{popular.slice(0, 12).map((id, i) => {
+              const t = byId[id];
+              return card({ id, name: t.title, description: t.artist, cover: t.cover }, () => playList(popular, i), () => playList(popular, i));
+            })}</div>
+            {jamendoEnabled && <>
+              <h2>Generi</h2>
+              <div className="genres">{genres.map((g) => (
+                <div key={g.tag} className="genre" style={{ background: g.color }} onClick={() => setView({ type: 'tag', tag: g.tag })}>{g.name}</div>
+              ))}</div>
+            </>}
             <h2>Album popolari</h2>
-            <div className="grid">{albums.map((a) => card(a, () => setView({ type: 'album', id: a.id })))}</div>
+            <div className="grid">{homeAlbums.map((a) => card(a, () => setView({ type: 'album', ...a }),
+              jamendoEnabled ? () => albumTracks(a.id).then((list) => playList(remember(list))) : undefined))}</div>
+            <h2>Le tue playlist</h2>
+            <div className="grid">{playlists.map((p) => card(p, () => setView({ type: 'playlist', id: p.id })))}</div>
           </div>
         )}
 
         {view.type === 'search' && (
           <div className="page">
             <div className="search-box"><Ic.Search size={20} /><input autoFocus placeholder="Cosa vuoi ascoltare?" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
-            <h2>{query ? `Risultati per "${query}"` : 'Tutti i brani'}</h2>
-            {trackTable(results.map((t) => t.id))}
+            {!query && jamendoEnabled && <>
+              <h2>Sfoglia tutto</h2>
+              <div className="genres">{genres.map((g) => (
+                <div key={g.tag} className="genre" style={{ background: g.color }} onClick={() => setView({ type: 'tag', tag: g.tag })}>{g.name}</div>
+              ))}</div>
+            </>}
+            <h2>{query ? `Risultati per "${query}"` : jamendoEnabled ? 'Di tendenza' : 'Tutti i brani'}</h2>
+            {trackTable(results)}
           </div>
         )}
 
         {collection && (
           <div className="page collection">
-            <header className="hero">
-              {collection.liked ? <div className="liked-cover big"><Ic.Heart filled size={80} /></div> : <img src={collection.cover} alt="" />}
+            <header className="hero" style={collection.color ? { background: `linear-gradient(180deg, ${collection.color}, transparent)` } : undefined}>
+              {collection.liked ? <div className="liked-cover big"><Ic.Heart filled size={80} /></div>
+                : collection.cover ? <img src={collection.cover} alt="" />
+                : <div className="liked-cover big" style={{ background: collection.color }}><Ic.Library size={80} /></div>}
               <div>
-                <small>{view.type === 'album' ? 'Album' : 'Playlist'}</small>
+                <small>{view.type === 'album' ? 'Album' : view.type === 'tag' ? 'Genere' : 'Playlist'}</small>
                 {collection.custom
                   ? <input className="title-input" value={collection.name} onChange={(e) => renamePlaylist(collection.id, e.target.value)} />
                   : <h1>{collection.name}</h1>}

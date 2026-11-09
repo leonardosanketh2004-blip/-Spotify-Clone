@@ -10,3 +10,14 @@ Brani demo: SoundHelix (royalty-free). Copertine: picsum.photos.
 npm install
 npm run dev
 ```
+
+## Musica vera con Jamendo
+
+1. Crea un'app gratuita su https://devportal.jamendo.com e copia il **Client ID**.
+2. Crea il file `.env.local` nella root del progetto:
+   ```
+   VITE_JAMENDO_CLIENT_ID=il_tuo_client_id
+   ```
+3. Riavvia `npm run dev`.
+
+Senza Client ID l'app usa i brani demo.
