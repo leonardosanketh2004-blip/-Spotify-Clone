@@ -14,12 +14,16 @@ export const genres = [
   { tag: 'indie', name: 'Indie', color: '#e8115b' },
 ];
 
-async function api(path, params = {}) {
+// The Jamendo API intermittently returns an empty result set for valid queries, so retry a few times.
+async function api(path, params = {}, attempts = 4) {
   const qs = new URLSearchParams({ client_id: CLIENT_ID, format: 'json', ...params });
-  const res = await fetch(`${BASE}/${path}/?${qs}`);
-  const data = await res.json();
-  if (data.headers?.status !== 'success') throw new Error(data.headers?.error_message || 'Errore Jamendo');
-  return data.results;
+  for (let i = 1; ; i++) {
+    const res = await fetch(`${BASE}/${path}/?${qs}`);
+    const data = await res.json();
+    if (data.headers?.status !== 'success') throw new Error(data.headers?.error_message || 'Errore Jamendo');
+    if (data.results.length || i >= attempts) return data.results;
+    await new Promise((r) => setTimeout(r, 250 * i));
+  }
 }
 
 const toTrack = (t) => ({

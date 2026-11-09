@@ -17,6 +17,7 @@ function useStored(key, initial) {
 
 export default function App() {
   const audio = useRef(null);
+  const failures = useRef(0);
   const [view, setView] = useState({ type: 'home' });
   const [playlists, setPlaylists] = useStored('sc-playlists', defaultPlaylists);
   const [liked, setLiked] = useStored('sc-liked', []);
@@ -89,7 +90,7 @@ export default function App() {
 
   useEffect(() => { audio.current.volume = muted ? 0 : volume; }, [volume, muted]);
   useEffect(() => {
-    if (playing) audio.current.play().catch(() => setPlaying(false));
+    if (playing) audio.current.play().catch(() => (audio.current.error ? skipBroken() : setPlaying(false)));
     else audio.current.pause();
   }, [playing, current]);
   useEffect(() => {
@@ -116,6 +117,9 @@ export default function App() {
     let n = shuffle ? Math.floor(Math.random() * queue.length) : index + 1;
     if (n >= queue.length) { if (repeat === 'all' || !auto) n = 0; else { setPlaying(false); return; } }
     setIndex(n); setTime(0);
+  };
+  const skipBroken = () => {
+    if (++failures.current < queue.length) next(); else setPlaying(false);
   };
   const prev = () => {
     if (audio.current.currentTime > 3) { audio.current.currentTime = 0; return; }
@@ -316,7 +320,9 @@ export default function App() {
         <audio ref={audio} src={current?.src} preload="metadata"
           onTimeUpdate={(e) => setTime(e.target.currentTime)}
           onLoadedMetadata={(e) => setDuration(e.target.duration)}
-          onEnded={() => next(true)} />
+          onEnded={() => next(true)}
+          onPlaying={() => { failures.current = 0; }}
+          onError={() => playing && skipBroken()} />
       </footer>
 
       {menu && (
