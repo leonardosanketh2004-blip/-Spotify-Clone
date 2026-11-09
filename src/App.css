@@ -92,7 +92,7 @@ h2 { font-size: 24px; margin: 32px 0 16px; }
 .progress { display: flex; align-items: center; gap: 8px; width: 100%; }
 .progress small { font-size: 11px; min-width: 36px; text-align: center; }
 .volume { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
-.volume input { flex: none; width: 110px; }
+.volume input[type=range] { flex: none; width: 110px; }
 
 input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; height: 4px; border-radius: 2px; cursor: pointer;
   background: linear-gradient(to right, #fff var(--p), #4d4d4d var(--p)); }
